@@ -23,8 +23,12 @@ module.exports.bookingTunnel = async ({data}) => {
           ids: hotelIds,
           language: 'en',
           currency: 'USD',
-          checkin: new Date(checkin).toISOString().substring(0, 10),
-          checkout: new Date(checkout).toISOString().substring(0, 10),
+          checkin: checkin
+            ? new Date(checkin).toISOString().substring(0, 10)
+            : new Date().toISOString().substring(0, 10),
+          checkout: checkout
+            ? new Date(checkout).toISOString().substring(0, 10)
+            : new Date().toISOString().substring(0, 10),
           guests,
         },
         {
@@ -35,45 +39,47 @@ module.exports.bookingTunnel = async ({data}) => {
         }
       );
 
-      const cityHotels = requestResponse.data?.data?.hotels;
-      let cityHotel;
-      let hotelWithCancellationFound;
+      if (requestResponse) {
+        const cityHotels = requestResponse.data?.data?.hotels;
+        let cityHotel;
+        let hotelWithCancellationFound;
 
-      for (let i = 0; i <= cityHotels.length; i++) {
-        const hotel = cityHotels[i];
+        for (let i = 0; i <= cityHotels.length; i++) {
+          const hotel = cityHotels[i];
 
-        if (hotel?.rates?.length > 0) {
-          const rates = hotel?.rates;
-          for (let i = 0; i <= rates.length; i++) {
-            const rate = rates[i];
-            if (
-              rate?.payment_options?.payment_types?.[0]?.cancellation_penalties
-                ?.free_cancellation_before
-            ) {
-              cityHotel = hotel;
-              hotelWithCancellationFound = true;
+          if (hotel?.rates?.length > 0) {
+            const rates = hotel?.rates;
+            for (let i = 0; i <= rates.length; i++) {
+              const rate = rates[i];
+              if (
+                rate?.payment_options?.payment_types?.[0]
+                  ?.cancellation_penalties?.free_cancellation_before
+              ) {
+                cityHotel = hotel;
+                hotelWithCancellationFound = true;
+              }
             }
           }
         }
-      }
 
-      if (!hotelWithCancellationFound)
-        cityHotel = requestResponse.data?.data?.hotels[0];
+        if (!hotelWithCancellationFound)
+          cityHotel = requestResponse.data?.data?.hotels[0];
 
-      if (cityHotel?.id) {
-        const {id, rates} = cityHotel;
+        if (cityHotel?.id) {
+          const {id, rates} = cityHotel;
 
-        if (!response[key][id]) response[key][id] = [];
+          if (!response[key][id]) response[key][id] = [];
 
-        rates.map(({payment_options, room_name, daily_prices}) => {
-          const cancellationDate =
-            payment_options.payment_types[0].cancellation_penalties
-              ?.free_cancellation_before;
-          response[key][id] = [
-            ...response[key][id],
-            {amount: daily_prices[0], cancellationDate, room_name},
-          ];
-        });
+          rates.map(({payment_options, room_name, daily_prices}) => {
+            const cancellationDate =
+              payment_options.payment_types[0].cancellation_penalties
+                ?.free_cancellation_before;
+            response[key][id] = [
+              ...response[key][id],
+              {amount: daily_prices[0], cancellationDate, room_name},
+            ];
+          });
+        }
       }
     }
 
